@@ -169,7 +169,7 @@ def test_parse_object(parser, s, expected, error):
         pytest.param("true", True),
         pytest.param("true ", True),
         pytest.param("  true ", True),
-        pytest.param("badkeyword", not_parsed),
+        pytest.param("bad_keyword", not_parsed),
     ],
 )
 def test_parse_true(parser, s, expected):
@@ -184,7 +184,7 @@ def test_parse_true(parser, s, expected):
         pytest.param("false", False),
         pytest.param("false ", False),
         pytest.param("  false ", False),
-        pytest.param("badkeyword", not_parsed),
+        pytest.param("bad_keyword", not_parsed),
     ],
 )
 def test_parse_false(parser, s, expected):
@@ -199,7 +199,7 @@ def test_parse_false(parser, s, expected):
         pytest.param("null", None),
         pytest.param("null ", None),
         pytest.param("  null ", None),
-        pytest.param("badkeyword", not_parsed),
+        pytest.param("bad_keyword", not_parsed),
     ],
 )
 def test_parse_null(parser, s, expected):
@@ -211,27 +211,24 @@ def test_parse_null(parser, s, expected):
 @pytest.mark.parametrize(
     "s,expected",
     [
-        pytest.param('', False, id="step 1 invalid - empty string"),
-        pytest.param('{}', True, id="step 1 valid - empty object"),
-        pytest.param('{"key": "value"}', True, id="step 2 - valid object"),
-        pytest.param('{\n"key": "value",\n"key2": "value"\n}', True, id="step 2 - valid with white space"),
-        pytest.param('{"key": "value",}', False, id="step 2 - invalid object with trailing comma"),
-        pytest.param('{\n"key": "value",\n"key2": value\n}', False, id="step 2 - invalid with bad key"),
-        pytest.param('{\n"key1": true,\n"key2": false,\n"key3": null,\n"key4": "value",\n"key5": 101\n}', True, id="step 3 - valid object with multiple value types"),
-        pytest.param('{\n"key1": true,\n"key2": False,\n"key3": null,\n"key4": "value",\n"key5": 101\n}', False, id="step 3 - valid object with multiple value types"),
-        pytest.param('{\n"key": "value",\n"key-n": 101,\n"key-o": {},\n"key-l": []\n}', True, id="step 4 - valid object with empty object and empty list"),
-        pytest.param('{\n"key": "value",\n"key-n": 101,\n"key-o": {\n"inner key": "inner value"\n},\n"key-l": [\n\'list value\'\n]\n}', False, id="step 4 - object empty list item is single quoted"),
-        pytest.param('{\n"key": "value",\n"key-n": 101,\n"key-o": {\n"inner key": "inner value"\n},\n"key-l": [\n"list value"\n]\n}', True, id="step 4 - object empty list item is double quoted"),
+        pytest.param('', False, id="step 1 - invalid: empty string"),
+        pytest.param('{}', True, id="step 1 - valid: empty object"),
+        pytest.param('{"key": "value"}', True, id="step 2 - valid: object with key and value"),
+        pytest.param('{\n"key": "value",\n"key2": "value"\n}', True, id="step 2 - valid: object with key value pair and whitespace"),
+        pytest.param('{"key": "value",}', False, id="step 2 - invalid: object with a trailing comma"),
+        pytest.param('{\n"key": "value",\n"key2": value\n}', False, id="step 2 - invalid: object key not double quoted"),
+        pytest.param('{\n"key1": true,\n"key2": false,\n"key3": null,\n"key4": "value",\n"key5": 101\n}', True, id="step 3 - valid: object with multiple value types"),
+        pytest.param('{\n"key1": true,\n"key2": False,\n"key3": null,\n"key4": "value",\n"key5": 101\n}', False, id="step 3 - invalid: object with a bad keyword False"),
+        pytest.param('{\n"key": "value",\n"key-n": 101,\n"key-o": {},\n"key-l": []\n}', True, id="step 4 - valid: object with an empty object and empty list as values"),
+        pytest.param('{\n"key": "value",\n"key-n": 101,\n"key-o": {\n"inner key": "inner value"\n},\n"key-l": [\n\'list value\'\n]\n}', False, id="step 4 - invalid: object list item is single quoted"),
+        pytest.param('{\n"key": "value",\n"key-n": 101,\n"key-o": {\n"inner key": "inner value"\n},\n"key-l": [\n"list value"\n]\n}', True, id="step 4 - valid: object list item is double quoted"),
     ]
 )
 def test_challenge_values(parser, s, expected):
     p = parser(s)
-    is_valid = None
-
     try:
         p.parse(s)
         is_valid = True
     except Exception:
         is_valid = False
-
     assert is_valid == expected
