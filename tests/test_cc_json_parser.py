@@ -2,7 +2,7 @@ import pathlib
 import pytest
 
 from cc_json_parser import exceptions as e
-from cc_json_parser.cc_json_parser import Parser, not_parsed
+from cc_json_parser.cc_json_parser import Parser, NOT_PARSED
 
 
 @pytest.fixture
@@ -60,7 +60,7 @@ def test_parse_number(parser, s, expected, error):
 @pytest.mark.parametrize(
     "s,expected,error",
     [
-        pytest.param("123", not_parsed, None),
+        pytest.param("123", NOT_PARSED, None),
         pytest.param('"abc"', "abc", None),
         pytest.param('"def"', "def", None),
         pytest.param('  "ghi"  ', "ghi", None),
@@ -94,7 +94,7 @@ def test_parse_double_quoted_string(parser, s, expected, error):
 @pytest.mark.parametrize(
     "s,expected,error",
     [
-        pytest.param("abc", not_parsed, None),
+        pytest.param("abc", NOT_PARSED, None),
         pytest.param("[]", [], None),
         pytest.param("[    ]", [], None),
         pytest.param("   []", [], None),
@@ -128,7 +128,7 @@ def test_parse_array(parser, s, expected, error):
 @pytest.mark.parametrize(
     "s,expected,error",
     [
-        pytest.param("abc", not_parsed, None),
+        pytest.param("abc", NOT_PARSED, None),
         pytest.param("{}", {}, None),
         pytest.param("{", None, e.UnmatchedBraceException),
         pytest.param("{    ", None, e.UnmatchedBraceException),
@@ -168,7 +168,7 @@ def test_parse_object(parser, s, expected, error):
         pytest.param("true", True),
         pytest.param("true ", True),
         pytest.param("  true ", True),
-        pytest.param("bad_keyword", not_parsed),
+        pytest.param("bad_keyword", NOT_PARSED),
     ],
 )
 def test_parse_true(parser, s, expected):
@@ -183,7 +183,7 @@ def test_parse_true(parser, s, expected):
         pytest.param("false", False),
         pytest.param("false ", False),
         pytest.param("  false ", False),
-        pytest.param("bad_keyword", not_parsed),
+        pytest.param("bad_keyword", NOT_PARSED),
     ],
 )
 def test_parse_false(parser, s, expected):
@@ -198,7 +198,7 @@ def test_parse_false(parser, s, expected):
         pytest.param("null", None),
         pytest.param("null ", None),
         pytest.param("  null ", None),
-        pytest.param("bad_keyword", not_parsed),
+        pytest.param("bad_keyword", NOT_PARSED),
     ],
 )
 def test_parse_null(parser, s, expected):

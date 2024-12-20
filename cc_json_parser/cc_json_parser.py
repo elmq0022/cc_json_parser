@@ -13,7 +13,7 @@ class NotParsed:
     ...
 
 
-not_parsed = NotParsed()
+NOT_PARSED = NotParsed()
 
 
 class Parser(object):
@@ -34,10 +34,9 @@ class Parser(object):
         while self.pos < len(self.s) and self.current() in string.whitespace:
             self.inc()
 
-    def current_is_one_of(self, chars: str, inc: bool = True):
-        if self.current() in chars:
-            if inc:
-                self.inc()
+    def current_is_one_of(self, chars: str):
+        if self.pos < len(self.s) and self.current() in chars:
+            self.inc()
             return True
         return False
 
@@ -59,48 +58,35 @@ class Parser(object):
         return result
 
     def get_digits(self):
-        last_was_numeric = 0
         got_digits = False
-
-        if self.current().isnumeric():
+        while self.pos < len(self.s) and self.current().isnumeric():
             got_digits = True
-
-        while self.current().isnumeric():
-            if not self.inc():
-                last_was_numeric = 1
-                break
-
-        return last_was_numeric, got_digits
+            self.inc()
+        return got_digits
 
     def parse_number(self):
         self.consume_whitespace()
         if not self.current().isnumeric() and not self.current() == "-":
-            return not_parsed
+            return NOT_PARSED
 
         start = self.pos
         if self.current_is_one_of("-"):
             self.inc()
 
-        if self.current_is_one_of("0", inc=False):
-            if not self.inc():
-                return 0
-
-            if self.current().isnumeric():
-                raise Exception()
-            last_was_numeric = 0
+        if self.current() == "0":
+            self.inc()
         else:
-            last_was_numeric, _ = self.get_digits()
+            self.get_digits()
 
         if self.current_is_one_of("."):
-            last_was_numeric, _ = self.get_digits()
+            self.get_digits()
 
         if self.current_is_one_of("eE"):
             self.current_is_one_of("+-")
-            last_was_numeric, got_digits = self.get_digits()
-            if not got_digits:
+            if not self.get_digits():
                 raise Exception()
 
-        result = float(self.s[start: self.pos + last_was_numeric])
+        result = float(self.s[start: self.pos])
         if result % 1 == 0:
             result = int(result)
 
@@ -114,7 +100,7 @@ class Parser(object):
             self.pos += len(keyword)
             self.consume_whitespace()
             return value
-        return not_parsed
+        return NOT_PARSED
 
     def parse_true(self):
         return self._parse_keyword("true", True)
@@ -129,7 +115,7 @@ class Parser(object):
         self.consume_whitespace()
 
         if not self.current() == '"':
-            return not_parsed
+            return NOT_PARSED
 
         if not self.inc():
             raise e.UnmatchedDoubleQuoteException()
@@ -174,15 +160,13 @@ class Parser(object):
                 raise e.UnmatchedDoubleQuoteException()
 
         result = "".join(result)
-        self.inc()  # hmmm .... suspect
-        self.consume_whitespace()
-        # should I inc here as well
+        self.inc()
         return result
 
     def parse_array(self):
         self.consume_whitespace()
         if self.current() != "[":
-            return not_parsed
+            return NOT_PARSED
 
         self.depth += 1
         if self.depth > self.max_depth:
@@ -203,7 +187,7 @@ class Parser(object):
                 break
 
             value = self.parse_value()
-            if value is not_parsed:
+            if value is NOT_PARSED:
                 raise Exception()
             else:
                 result.append(value)
@@ -226,7 +210,7 @@ class Parser(object):
         self.consume_whitespace()
 
         if self.current() != "{":
-            return not_parsed
+            return NOT_PARSED
 
         self.depth += 1
         if self.depth > self.max_depth:
@@ -247,7 +231,7 @@ class Parser(object):
 
             key = self.parse_string()
 
-            if key is not_parsed:
+            if key is NOT_PARSED:
                 raise e.InvalidKeyException()
 
             if key in result:
@@ -263,7 +247,7 @@ class Parser(object):
             self.consume_whitespace()
             value = self.parse_value()
 
-            if value is not_parsed:
+            if value is NOT_PARSED:
                 raise Exception()
 
             result[key] = value
@@ -285,25 +269,25 @@ class Parser(object):
     def parse_value(self):
         result = self.parse_object()
 
-        if result is not_parsed:
+        if result is NOT_PARSED:
             result = self.parse_array()
 
-        if result is not_parsed:
+        if result is NOT_PARSED:
             result = self.parse_number()
 
-        if result is not_parsed:
+        if result is NOT_PARSED:
             result = self.parse_string()
 
-        if result is not_parsed:
+        if result is NOT_PARSED:
             result = self.parse_true()
 
-        if result is not_parsed:
+        if result is NOT_PARSED:
             result = self.parse_false()
 
-        if result is not_parsed:
+        if result is NOT_PARSED:
             result = self.parse_null()
 
-        if result is not_parsed:
+        if result is NOT_PARSED:
             raise Exception()
 
         return result
