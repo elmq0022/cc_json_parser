@@ -1,5 +1,4 @@
 import string
-from email.utils import decode_params
 
 from cc_json_parser import exceptions as e
 
@@ -33,23 +32,19 @@ class Parser(object):
 
     def consume_whitespace(self):
         while self.pos < len(self.s) and self.current() in string.whitespace:
-            if not self.inc():
-                break
+            self.inc()
 
-    def current_is_one_of(self, chars: str, inc:bool=True):
+    def current_is_one_of(self, chars: str, inc: bool = True):
         if self.current() in chars:
             if inc:
                 self.inc()
             return True
         return False
 
-    def is_unicode_char(self, char):
-        return char in string.hexdigits
-
     def get_unicode(self):
         chars = ""
         for _ in range(4):
-            if not self.is_unicode_char(self.current()):
+            if not self.current() in string.hexdigits:
                 raise Exception()
             chars += self.current()
 
@@ -224,7 +219,7 @@ class Parser(object):
             raise e.TrailingCommaException()
 
         self.inc()
-        self.depth -=1
+        self.depth -= 1
         return result
 
     def parse_object(self):
@@ -321,13 +316,10 @@ class Parser(object):
         if not self.current() in "{[":
             raise Exception()
 
-        try:
-            result = self.parse_value()
-        except Exception as e:
-            raise e
+        result = self.parse_value()
 
         self.consume_whitespace()
-        if self.inc():
+        if self.pos != len(self.s):
             raise Exception()
 
         return result

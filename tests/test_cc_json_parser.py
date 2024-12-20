@@ -1,7 +1,4 @@
 import pathlib
-from os import PathLike
-from unittest import expectedFailure
-
 import pytest
 
 from cc_json_parser import exceptions as e
@@ -25,7 +22,7 @@ def parser():
     [
         pytest.param("[123]", [123], None),
         pytest.param("[456]", [456], None),
-        pytest.param("[123] ", [123], None),
+        pytest.param("[123] ", [123], None),  #
         pytest.param("[ 123]", [123], None),
         pytest.param("[ 123   ]", [123], None),
         pytest.param("[1.23]", [1.23], None),
@@ -216,14 +213,23 @@ def test_parse_null(parser, s, expected):
         pytest.param('', False, id="step 1 - invalid: empty string"),
         pytest.param('{}', True, id="step 1 - valid: empty object"),
         pytest.param('{"key": "value"}', True, id="step 2 - valid: object with key and value"),
-        pytest.param('{\n"key": "value",\n"key2": "value"\n}', True, id="step 2 - valid: object with key value pair and whitespace"),
+        pytest.param('{\n"key": "value",\n"key2": "value"\n}', True,
+                     id="step 2 - valid: object with key value pair and whitespace"),
         pytest.param('{"key": "value",}', False, id="step 2 - invalid: object with a trailing comma"),
-        pytest.param('{\n"key": "value",\n"key2": value\n}', False, id="step 2 - invalid: object key not double quoted"),
-        pytest.param('{\n"key1": true,\n"key2": false,\n"key3": null,\n"key4": "value",\n"key5": 101\n}', True, id="step 3 - valid: object with multiple value types"),
-        pytest.param('{\n"key1": true,\n"key2": False,\n"key3": null,\n"key4": "value",\n"key5": 101\n}', False, id="step 3 - invalid: object with a bad keyword False"),
-        pytest.param('{\n"key": "value",\n"key-n": 101,\n"key-o": {},\n"key-l": []\n}', True, id="step 4 - valid: object with an empty object and empty list as values"),
-        pytest.param('{\n"key": "value",\n"key-n": 101,\n"key-o": {\n"inner key": "inner value"\n},\n"key-l": [\n\'list value\'\n]\n}', False, id="step 4 - invalid: object list item is single quoted"),
-        pytest.param('{\n"key": "value",\n"key-n": 101,\n"key-o": {\n"inner key": "inner value"\n},\n"key-l": [\n"list value"\n]\n}', True, id="step 4 - valid: object list item is double quoted"),
+        pytest.param('{\n"key": "value",\n"key2": value\n}', False,
+                     id="step 2 - invalid: object key not double quoted"),
+        pytest.param('{\n"key1": true,\n"key2": false,\n"key3": null,\n"key4": "value",\n"key5": 101\n}', True,
+                     id="step 3 - valid: object with multiple value types"),
+        pytest.param('{\n"key1": true,\n"key2": False,\n"key3": null,\n"key4": "value",\n"key5": 101\n}', False,
+                     id="step 3 - invalid: object with a bad keyword False"),
+        pytest.param('{\n"key": "value",\n"key-n": 101,\n"key-o": {},\n"key-l": []\n}', True,
+                     id="step 4 - valid: object with an empty object and empty list as values"),
+        pytest.param(
+            '{\n"key": "value",\n"key-n": 101,\n"key-o": {\n"inner key": "inner value"\n},\n"key-l": [\n\'list value\'\n]\n}',
+            False, id="step 4 - invalid: object list item is single quoted"),
+        pytest.param(
+            '{\n"key": "value",\n"key-n": 101,\n"key-o": {\n"inner key": "inner value"\n},\n"key-l": [\n"list value"\n]\n}',
+            True, id="step 4 - valid: object list item is double quoted"),
     ]
 )
 def test_challenge_values(parser, s, expected):
@@ -249,7 +255,9 @@ def gen_json_org_dataset():
 
     return test_cases
 
+
 test_cases = gen_json_org_dataset()
+
 
 @pytest.mark.parametrize("file,expected", test_cases)
 def test_json_org_dataset(parser, file, expected):
@@ -263,10 +271,3 @@ def test_json_org_dataset(parser, file, expected):
     except Exception:
         is_valid = False
     assert is_valid == expected
-
-
-def test_adhoc(parser):
-    s = '["Extra close"]]'
-    p = parser(s)
-    result = p.parse(s)
-    print(result)
