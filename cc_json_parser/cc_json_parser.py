@@ -1,4 +1,5 @@
 import string
+from email.utils import decode_params
 
 from cc_json_parser import exceptions as e
 
@@ -17,32 +18,33 @@ not_parsed = NotParsed()
 
 
 class Parser(object):
-    def __init__(self):
+    def __init__(self, max_depth=19):
         self.pos = None
         self.s = None
+        self.depth = None
+        self.max_depth = max_depth
 
-    def current(self, offset=0):
-        return self.s[self.pos + offset]
+    def current(self):
+        return self.s[self.pos]
 
-    def inc(self, offset=1):
-        if self.pos + offset < len(self.s):
-            self.pos += offset
-            return True
-        return False
+    def inc(self):
+        self.pos += 1
+        return self.pos < len(self.s)
 
     def consume_whitespace(self):
         while self.pos < len(self.s) and self.current() in string.whitespace:
             if not self.inc():
                 break
 
-    def get_one_of(self, chars: str):
+    def current_is_one_of(self, chars: str, inc:bool=True):
         if self.current() in chars:
-            self.inc()
+            if inc:
+                self.inc()
             return True
         return False
 
     def is_unicode_char(self, char):
-        return char in "0123456789ABCDEF"
+        return char in string.hexdigits
 
     def get_unicode(self):
         chars = ""
@@ -81,14 +83,24 @@ class Parser(object):
             return not_parsed
 
         start = self.pos
-        self.get_one_of("-")
-        last_was_numeric, _ = self.get_digits()
+        if self.current_is_one_of("-"):
+            self.inc()
 
-        if self.get_one_of("."):
+        if self.current_is_one_of("0", inc=False):
+            if not self.inc():
+                return 0
+
+            if self.current().isnumeric():
+                raise Exception()
+            last_was_numeric = 0
+        else:
             last_was_numeric, _ = self.get_digits()
 
-        if self.get_one_of("eE"):
-            self.get_one_of("+-")
+        if self.current_is_one_of("."):
+            last_was_numeric, _ = self.get_digits()
+
+        if self.current_is_one_of("eE"):
+            self.current_is_one_of("+-")
             last_was_numeric, got_digits = self.get_digits()
             if not got_digits:
                 raise Exception()
@@ -104,9 +116,8 @@ class Parser(object):
     def _parse_keyword(self, keyword, value):
         self.consume_whitespace()
         if self.s[self.pos: self.pos + len(keyword)] == keyword:
-            self.inc(len(keyword))
+            self.pos += len(keyword)
             self.consume_whitespace()
-            self.inc()
             return value
         return not_parsed
 
@@ -130,6 +141,9 @@ class Parser(object):
 
         result = []
         while self.current() != '"':
+            if 0 <= ord(self.current()) <= 31:
+                raise Exception("cannot have control char in string")
+
             if self.current() != "\\":
                 result.append(self.current())
 
@@ -158,6 +172,8 @@ class Parser(object):
                         if not self.inc():
                             raise e.UnmatchedDoubleQuoteException()
                         result.append(self.get_unicode())
+                    case _:
+                        raise Exception()
 
             if not self.inc():
                 raise e.UnmatchedDoubleQuoteException()
@@ -173,6 +189,11 @@ class Parser(object):
         if self.current() != "[":
             return not_parsed
 
+        self.depth += 1
+        if self.depth > self.max_depth:
+            raise e.MaxDepthExceededException()
+
+        self.consume_whitespace()
         if not self.inc():
             raise e.UnmatchedBracketException()
 
@@ -180,12 +201,11 @@ class Parser(object):
         trailing_comma = False
         while True:
             self.consume_whitespace()
+            if self.pos == len(self.s):
+                raise e.UnmatchedBracketException()
 
             if self.current() == "]":
                 break
-
-            if self.pos == len(self.s) - 1:
-                raise e.UnmatchedBracketException()
 
             value = self.parse_value()
             if value is not_parsed:
@@ -204,6 +224,7 @@ class Parser(object):
             raise e.TrailingCommaException()
 
         self.inc()
+        self.depth -=1
         return result
 
     def parse_object(self):
@@ -212,6 +233,10 @@ class Parser(object):
         if self.current() != "{":
             return not_parsed
 
+        self.depth += 1
+        if self.depth > self.max_depth:
+            raise e.MaxDepthExceededException()
+
         if not self.inc():
             raise e.UnmatchedBraceException()
 
@@ -219,12 +244,11 @@ class Parser(object):
         trailing_comma = False
         while True:
             self.consume_whitespace()
+            if self.pos == len(self.s):
+                raise e.UnmatchedBraceException()
 
             if self.current() == "}":
                 break
-
-            if self.pos == len(self.s) - 1:
-                raise e.UnmatchedBraceException()
 
             key = self.parse_string()
 
@@ -260,6 +284,7 @@ class Parser(object):
             raise e.TrailingCommaException()
 
         self.inc()
+        self.depth -= 1
         return result
 
     def parse_value(self):
@@ -291,12 +316,18 @@ class Parser(object):
     def parse(self, s):
         self.s = s
         self.pos = 0
+        self.depth = 0
         self.consume_whitespace()
         if not self.current() in "{[":
             raise Exception()
 
         try:
             result = self.parse_value()
-            return result
         except Exception as e:
             raise e
+
+        self.consume_whitespace()
+        if self.inc():
+            raise Exception()
+
+        return result

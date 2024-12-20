@@ -1,3 +1,5 @@
+import pathlib
+from os import PathLike
 from unittest import expectedFailure
 
 import pytest
@@ -12,6 +14,7 @@ def parser():
         p = Parser()
         p.s = s
         p.pos = 0
+        p.depth = 0
         return p
 
     return _parser
@@ -20,35 +23,34 @@ def parser():
 @pytest.mark.parametrize(
     "s,expected,error",
     [
-        pytest.param("abc", not_parsed, None),
-        pytest.param("123", 123, None),
-        pytest.param("456", 456, None),
-        pytest.param("123 ", 123, None),
-        pytest.param(" 123", 123, None),
-        pytest.param(" 123   ", 123, None),
-        pytest.param("1.23", 1.23, None),
-        pytest.param("  1.23", 1.23, None),
-        pytest.param("1.23   ", 1.23, None),
-        pytest.param("   1.23  ", 1.23, None),
-        pytest.param("-1", -1, None),
-        pytest.param("1e1", 10, None),
-        pytest.param("1e0", 1, None),
-        pytest.param("1e+1", 10, None),
-        pytest.param("1e-1", 0.1, None),
-        pytest.param("1.1e1", 11, None),
-        pytest.param("1.1e", None, Exception),
-        pytest.param("1.1e-", None, Exception),
-        pytest.param("1.1e+", None, Exception),
-        pytest.param("1.", 1, None),
-        pytest.param("-", None, Exception),
-        pytest.param("+", not_parsed, None),
+        pytest.param("[123]", [123], None),
+        pytest.param("[456]", [456], None),
+        pytest.param("[123] ", [123], None),
+        pytest.param("[ 123]", [123], None),
+        pytest.param("[ 123   ]", [123], None),
+        pytest.param("[1.23]", [1.23], None),
+        pytest.param("[  1.23]", [1.23], None),
+        pytest.param("[1.23   ]", [1.23], None),
+        pytest.param("[   1.23  ]", [1.23], None),
+        pytest.param("[-1]", [-1], None),
+        pytest.param("[1e1]", [10], None),
+        pytest.param("[1e0]", [1], None),
+        pytest.param("[1e+1]", [10], None),
+        pytest.param("[1e-1]", [0.1], None),
+        pytest.param("[1.1e1]", [11], None),
+        pytest.param("[1.1e]", None, Exception),
+        pytest.param("[1.1e-]", None, Exception),
+        pytest.param("[1.1e+]", None, Exception),
+        pytest.param("[1.]", [1], None),
+        pytest.param("[-]", None, Exception),
+        pytest.param("[+]", None, Exception),
     ],
 )
 def test_parse_number(parser, s, expected, error):
     p = parser(s)
 
     try:
-        actual = p.parse_number()
+        actual = p.parse(s)
     except Exception as e:
         actual = e
 
@@ -232,3 +234,39 @@ def test_challenge_values(parser, s, expected):
     except Exception:
         is_valid = False
     assert is_valid == expected
+
+
+def gen_json_org_dataset():
+    base_dir = pathlib.Path(__name__).absolute().parent
+    dataset = base_dir / "resources" / "json_org_dataset"
+    files: list[pathlib.Path] = [file for file in dataset.iterdir() if file.is_file()]
+
+    test_cases = []
+    for file in files:
+        name = file.name
+        expected = name.startswith("pass")
+        test_cases.append(pytest.param(file, expected, id=name))
+
+    return test_cases
+
+test_cases = gen_json_org_dataset()
+
+@pytest.mark.parametrize("file,expected", test_cases)
+def test_json_org_dataset(parser, file, expected):
+    with open(file) as f:
+        s = f.read()
+
+    p = parser(s)
+    try:
+        p.parse(s)
+        is_valid = True
+    except Exception:
+        is_valid = False
+    assert is_valid == expected
+
+
+def test_adhoc(parser):
+    s = '["Extra close"]]'
+    p = parser(s)
+    result = p.parse(s)
+    print(result)
